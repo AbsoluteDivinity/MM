@@ -52,68 +52,13 @@ main()
 	level.onStartGameType = ::onStartGameType;
 	level.getSpawnPoint = ::getSpawnPoint;
 	level.onNormalDeath = ::onNormalDeath;
-	//level.onTimeLimit = ::onTimeLimit;	// overtime not fully supported yet
+	level.onSpawnPlayer = ::onSpawnPlayer;
 
-	game["dialog"]["gametype"] = "tm_death";
-	
-	if ( getDvarInt( "g_hardcore" ) )
-		game["dialog"]["gametype"] = "hc_" + game["dialog"]["gametype"];
-	else if ( getDvarInt( "camera_thirdPerson" ) )
-		game["dialog"]["gametype"] = "thirdp_" + game["dialog"]["gametype"];
-	else if ( getDvarInt( "scr_diehard" ) )
-		game["dialog"]["gametype"] = "dh_" + game["dialog"]["gametype"];
-	else if (getDvarInt( "scr_" + level.gameType + "_promode" ) )
-		game["dialog"]["gametype"] = game["dialog"]["gametype"] + "_pro";
-	
-	game["strings"]["overtime_hint"] = &"MP_FIRST_BLOOD";
-
-	level thread onPlayerConnect();
-}
-
-onPlayerConnect()
-{
-	for ( ;; )
-	{
-		level waittill( "connected", player );
-		player thread onJoinedTeam();
-	}
-}
-
-onJoinedTeam()
-{
-	self endon("disconnect");
-
-	for(;;)
-	{
-		self waittill( "joined_team" );
-		self thread onPlayerSpawned();
-	}
-}
-
-onPlayerSpawned()
-{
-	self endon("disconnect");
-
-	for(;;)
-	{
-		self waittill("spawned_player");
-	}
 }
 
 onStartGameType()
 {
 	setClientNameMode("auto_change");
-
-	if ( !isdefined( game["switchedsides"] ) )
-		game["switchedsides"] = false;
-
-	if ( game["switchedsides"] )
-	{
-		oldAttackers = game["attackers"];
-		oldDefenders = game["defenders"];
-		game["attackers"] = oldDefenders;
-		game["defenders"] = oldAttackers;
-	}
 
 	setObjectiveText( "allies", &"OBJECTIVES_WAR" );
 	setObjectiveText( "axis", &"OBJECTIVES_WAR" );
@@ -144,9 +89,49 @@ onStartGameType()
 	allowed[0] = level.gameType;
 	allowed[1] = "airdrop_pallet";
 	
-	maps\mp\gametypes\_gameobjects::main(allowed);	
+	maps\mp\gametypes\_gameobjects::main(allowed);
+
+	level thread onPlayerConnect();
+
+	// The amount of time to wait for people to spawn.
+	setDvarIfUninitialized( "scr_mm_time", 30 );
 }
 
+onPlayerConnect()
+{
+	for ( ;; )
+	{
+		level waittill( "connected", player );
+		//player thread onJoinedTeam();
+		player.iMyers = undefined;
+	}
+}
+
+// onJoinedTeam()
+// {
+// 	self endon("disconnect");
+
+// 	for(;;)
+// 	{
+// 		self waittill( "joined_team" );
+// 		self thread onPlayerSpawned();
+// 	}
+// }
+
+// onPlayerSpawned()
+// {
+// 	self endon("disconnect");
+
+// 	for(;;)
+// 	{
+// 		self waittill("spawned_player");
+// 	}
+// }
+
+onSpawnPlayer()
+{
+	self.isMyers = false;
+}
 
 getSpawnPoint()
 {
@@ -176,6 +161,16 @@ getSpawnPoint()
 	return spawnPoint;
 }
 
+Myers()
+{
+	self endon( "death" )
+	self endon( "disconnect" )
+
+	self.isMyers = true;
+
+	// Do stuff here.
+}
+
 
 onNormalDeath( victim, attacker, lifeId )
 {
@@ -184,11 +179,18 @@ onNormalDeath( victim, attacker, lifeId )
 
 	attacker maps\mp\gametypes\_gamescore::giveTeamScoreForObjective( attacker.pers["team"], score );
 	
+	if( victim != attacker )
+	{
+		// If victim isn't a myer yet, make him.
+		if( !victim.isMyers )
+			victim thread Myers();
+	}
+
 	if ( game["state"] == "postgame" && game["teamScores"][attacker.team] > game["teamScores"][level.otherTeam[attacker.team]] )
 		attacker.finalKill = true;
 }
 
-
+// NOTE: Check if this can be removed.
 onTimeLimit()
 {
 	if ( game["status"] == "overtime" )
