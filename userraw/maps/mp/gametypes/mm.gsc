@@ -46,6 +46,9 @@ main()
 	setDvar("ui_allow_teamchange", 0);
 	setDvar("ui_allow_classchange", 0);
     setDvar("scr_game_hardpoints", 0);
+	setDvar( "jump_height", "100");
+	setDvar( "jump_slowdownEnable", "0" );
+	setDvar( "g_gravity", "600");
 
     level.objectiveBased = true;
 	level.teamBased = true;
@@ -103,7 +106,6 @@ onStartGameType()
 	maps\mp\gametypes\_rank::registerScoreInfo( "kill", 50 );
 
     level thread onPrematchOver();
-    //level thread onRoundSwitch(); <-- This no wurks!
 	level thread onPlayerConnect();
 
 	// The amount of time to wait for people to spawn.
@@ -121,20 +123,6 @@ onPrematchOver()
         level.firstMyer changeTeam( "axis" );
 	    //level.firstMyer playSound( "mp_defeat" );
 	    //level.firstMyer thread doMyerCountdown();
-    }
-}
-
-onRoundSwitch()
-{
-    for( ;; )
-	{
-        self waittill( "round_switch", switchType );
-        println(switchType);
-        println("[DEBUG]: We switched rounds!");
-        //firstMyer = level.players[randomInt( level.players.size )];
-        //firstMyer changeTeam( "axis" );
-	    level.firstMyer playSound( "mp_defeat" );
-	    level.firstMyer thread doMyerCountdown();
     }
 }
 
@@ -174,7 +162,13 @@ onPlayerConnect()
 	{
 		level waittill( "connected", player );
 
-		//player thread onMenuResponse();
+		// TODO: Change function logic
+		// Check if player is in a team
+		//    if player is in a team already, continue to onPlayerSpawned() thread
+		//    else check axis team and start onJoinedTeam() thread
+		//       if it has one player, let the player go to allies.
+		//       else let player go to axis.
+		
 
 		player thread doConnect();
 		player thread onJoinedTeam();
@@ -188,32 +182,6 @@ onPlayerConnect()
 	}
 }
 
-// onMenuResponse()
-// {
-// 	self endon("disconnect");
-	
-// 	for(;;)
-// 	{
-// 		self waittill("menuresponse", menu, response);
-
-// 		wait 0.01;
-
-//         self iprintLn(menu);
-
-// 		if(response == "changeclass_marines" )
-// 		{
-// 			self closepopupMenu();
-// 			self closeInGameMenu();
-// 		}
-
-// 		if(response == "changeclass_opfor" )
-// 		{
-// 			self closepopupMenu();
-// 			self closeInGameMenu();
-// 		}
-// 	}
-// }
-
 onJoinedTeam()
 {
 	self endon("disconnect");
@@ -221,6 +189,17 @@ onJoinedTeam()
 	for(;;)
 	{
 		self waittill( "joined_team" );
+
+		// TODO: Change function logic
+		// Check teamsize
+		//    if higher then one, move player to allies and return.
+		//    else continue
+		//
+		// Close all menus
+		// Choose first class
+		// Wait 0.1 or 0.01
+		// Start onPlayerSpawned thread
+
 		wait 0.1;
         //self closeInGameMenu();
         //self closepopupMenu();
@@ -237,6 +216,7 @@ onPlayerSpawned()
 	for(;;)
 	{
 		self waittill("spawned_player");
+
 		wait 0.01;
 
 		switch(self.sessionteam)
@@ -289,6 +269,9 @@ doConnect()
     if(game["roundsPlayed"] == 0) {
         setDvar("ui_allow_teamchange", 0);
         setDvar("ui_allow_classchange", 0);
+		setDvar( "jump_height", "100");
+		setDvar( "jump_slowdownEnable", "0" );
+		setDvar( "g_gravity", "600");
 
         self closepopupMenu();
         self closeInGameMenu();
