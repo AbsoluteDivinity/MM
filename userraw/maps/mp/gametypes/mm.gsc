@@ -3,8 +3,8 @@
 #include maps\mp\gametypes\_hud_util;
 /*
 	Michael Myers
-	Survivors objective: Kill all survivors
-	Defenders objective: Don't get killed by Michael Myer
+	Myers objective: Kill all survivors
+	Survivors objective: Don't get killed by Michael Myer
 	Round ends:	When survivor team is eliminated or roundlength time is reached
 	Map ends:	When one team reaches the score limit, or time limit or round limit is reached
 	Respawning:	Players remain dead for the round and will respawn at the beginning of the next round
@@ -20,13 +20,6 @@
 			classname		mp_global_intermission
 			Spectators spawn from these and intermission is viewed from these positions.
 			Atleast one is required, any more and they are randomly chosen between.
-
-	Level script requirements
-	-------------------------
-		Team Definitions:
-			game["attackers"] = "allies";
-			game["defenders"] = "axis";
-			This sets which team is attacking and which team is defending. Attackers hunt the defenders. Defenders protect their selfes.
 
 */
 
@@ -61,7 +54,6 @@ main()
 	level.onPlayerKilled = ::onPlayerKilled;
     level.onDeadEvent = ::onDeadEvent;
 	level.onOneLeftEvent = ::onOneLeftEvent;
-	//level.onTimeLimit = ::onTimeLimit;
 	level.onNormalDeath = ::onNormalDeath;
 }
 
@@ -70,24 +62,26 @@ onStartGameType()
 {	
 	setClientNameMode( "manual_change" );
 	
-    setObjectiveText( game["attackers"], &"OBJECTIVES_MM_ATTACKER" );
-	setObjectiveText( game["defenders"], &"OBJECTIVES_MM_DEFENDER" );
+    setObjectiveText( "axis", &"OBJECTIVES_MM_MYERS" );
+	setObjectiveText( "allies", &"OBJECTIVES_MM_SURVIVORS" );
 
 	if ( level.splitscreen )
 	{
-		setObjectiveScoreText( game["attackers"], &"OBJECTIVES_MM_ATTACKER" );
-		setObjectiveScoreText( game["defenders"], &"OBJECTIVES_MM_DEFENDER" );
+		setObjectiveScoreText( "axis", &"OBJECTIVES_MM_MYERS" );
+		setObjectiveScoreText( "allies", &"OBJECTIVES_MM_SURVIVORS" );
 	}
 	else
 	{
-		setObjectiveScoreText( game["attackers"], &"OBJECTIVES_MM_ATTACKER_SCORE" );
-		setObjectiveScoreText( game["defenders"], &"OBJECTIVES_MM_DEFENDER_SCORE" );
+		setObjectiveScoreText( "axis", &"OBJECTIVES_MM_MYERS_SCORE" );
+		setObjectiveScoreText( "allies", &"OBJECTIVES_MM_MYERS_SCORE" );
 	}
-	setObjectiveHintText( game["attackers"], &"OBJECTIVES_MM_ATTACKER_HINT" );
-	setObjectiveHintText( game["defenders"], &"OBJECTIVES_MM_DEFENDER_HINT" );
+	setObjectiveHintText( "axis", &"OBJECTIVES_MM_MYERS_HINT" );
+	setObjectiveHintText( "allies", &"OBJECTIVES_MM_SURVIVORS_HINT" );
 
 	level.spawnMins = ( 0, 0, 0 );
-	level.spawnMaxs = ( 0, 0, 0 );	
+	level.spawnMaxs = ( 0, 0, 0 );
+
+    //NOTE: Might need to take the DM Spawnlogics, so every player is spread.
 	maps\mp\gametypes\_spawnlogic::placeSpawnPoints( "mp_tdm_spawn_allies_start" );
 	maps\mp\gametypes\_spawnlogic::placeSpawnPoints( "mp_tdm_spawn_axis_start" );
 	maps\mp\gametypes\_spawnlogic::addSpawnPoints( "allies", "mp_tdm_spawn" );
@@ -109,6 +103,7 @@ onStartGameType()
 	maps\mp\gametypes\_rank::registerScoreInfo( "kill", 50 );
 
     level thread onPrematchOver();
+    //level thread onRoundSwitch(); <-- This no wurks!
 	level thread onPlayerConnect();
 
 	// The amount of time to wait for people to spawn.
@@ -122,10 +117,24 @@ onPrematchOver()
 	{
         self waittill("prematch_over");
 
-        firstMyer = level.players[randomInt( level.players.size )];
-        firstMyer notify("menuresponse", game["menu_team"], "axis");
-	    firstMyer playSound( "mp_defeat" );
-	    firstMyer thread doMyerCountdown();
+        level.firstMyer = level.players[randomInt( level.players.size )];
+        level.firstMyer changeTeam( "axis" );
+	    //level.firstMyer playSound( "mp_defeat" );
+	    //level.firstMyer thread doMyerCountdown();
+    }
+}
+
+onRoundSwitch()
+{
+    for( ;; )
+	{
+        self waittill( "round_switch", switchType );
+        println(switchType);
+        println("[DEBUG]: We switched rounds!");
+        //firstMyer = level.players[randomInt( level.players.size )];
+        //firstMyer changeTeam( "axis" );
+	    level.firstMyer playSound( "mp_defeat" );
+	    level.firstMyer thread doMyerCountdown();
     }
 }
 
@@ -165,37 +174,45 @@ onPlayerConnect()
 	{
 		level waittill( "connected", player );
 
-		player thread onMenuResponse();
+		//player thread onMenuResponse();
 
 		player thread doConnect();
 		player thread onJoinedTeam();
-		player.isMyers = false;
+
+        if(game["roundsPlayed"] > 0 ) // should actually just check the team but what ever...
+        {
+            player thread onPlayerSpawned();
+        }
+
+		//player.isMyers = undefined;
 	}
 }
 
-onMenuResponse()
-{
-	self endon("disconnect");
+// onMenuResponse()
+// {
+// 	self endon("disconnect");
 	
-	for(;;)
-	{
-		self waittill("menuresponse", menu, response);
+// 	for(;;)
+// 	{
+// 		self waittill("menuresponse", menu, response);
 
-		wait 0.01;
+// 		wait 0.01;
 
-		if(response == "changeclass_marines" )
-		{
-			self closepopupMenu();
-			self closeInGameMenu();
-		}
+//         self iprintLn(menu);
 
-		if(response == "changeclass_opfor" )
-		{
-			self closepopupMenu();
-			self closeInGameMenu();
-		}
-	}
-}
+// 		if(response == "changeclass_marines" )
+// 		{
+// 			self closepopupMenu();
+// 			self closeInGameMenu();
+// 		}
+
+// 		if(response == "changeclass_opfor" )
+// 		{
+// 			self closepopupMenu();
+// 			self closeInGameMenu();
+// 		}
+// 	}
+// }
 
 onJoinedTeam()
 {
@@ -205,7 +222,9 @@ onJoinedTeam()
 	{
 		self waittill( "joined_team" );
 		wait 0.1;
-		self notify("menuresponse", "changeclass", "class1");
+        //self closeInGameMenu();
+        //self closepopupMenu();
+		self notify("menuresponse", "changeclass", "class1");// <-- Needs to be looked at!
 
 		self thread onPlayerSpawned();
 	}
@@ -219,7 +238,6 @@ onPlayerSpawned()
 	{
 		self waittill("spawned_player");
 		wait 0.01;
-		//self thread doSpawn();
 
 		switch(self.sessionteam)
 		{
@@ -265,14 +283,18 @@ getSpawnPoint()
 doConnect()
 {
 	self endon( "disconnect" );
+    //self endon( "game_ended" );
 
-	setDvar("ui_allow_teamchange", 0);
-	setDvar("ui_allow_classchange", 0);
+    // Only do this at the first round, do note that everyone who joins in a later round is FKED!
+    if(game["roundsPlayed"] == 0) {
+        setDvar("ui_allow_teamchange", 0);
+        setDvar("ui_allow_classchange", 0);
 
-	self closepopupMenu();
-	self closeInGameMenu();
-	wait 0.01;
-    self notify("menuresponse", game["menu_team"], "allies");
+        self closepopupMenu();
+        self closeInGameMenu();
+        wait 0.01;
+        self notify("menuresponse", game["menu_team"], "allies");
+    }
 	
 }
 
@@ -309,6 +331,13 @@ doMyer()
 {
 	self endon( "death" );
 	self endon( "disconnect" );
+
+    // YEA IDGAF about leaving myers, will be looked at later...
+    //if(game["roundsPlayed"] > 0)
+    //{
+        self playSound( "mp_defeat" );
+        self thread doMyerCountdown();
+    //}
 
 	self.isMyers = true;
 
@@ -362,14 +391,14 @@ checkAllowSpectating()
 	wait ( 0.05 );
 	
 	update = false;
-	if ( !level.aliveCount[ game["attackers"] ] )
+	if ( !level.aliveCount[ "axis" ] )
 	{
-		level.spectateOverride[game["attackers"]].allowEnemySpectate = 1;
+		level.spectateOverride["axis"].allowEnemySpectate = 1;
 		update = true;
 	}
-	if ( !level.aliveCount[ game["defenders"] ] )
+	if ( !level.aliveCount[ "allies" ] )
 	{
-		level.spectateOverride[game["defenders"]].allowEnemySpectate = 1;
+		level.spectateOverride["allies"].allowEnemySpectate = 1;
 		update = true;
 	}
 	if ( update )
@@ -398,9 +427,12 @@ onDeadEvent( team )
 
 onOneLeftEvent( team )
 {
-	lastPlayer = getLastLivingPlayer( team );
+    // Only give a warning if there is one surivor left.
+    if( team == "allies" ) {
+        lastSurvivor = getLastLivingPlayer( team );
 
-	lastPlayer thread giveLastOnTeamWarning();
+        lastSurvivor thread giveLastOnTeamWarning();
+    }
 }
 
 
@@ -411,41 +443,36 @@ onNormalDeath( victim, attacker, lifeId )
 
 	team = victim.team;
 	
-	if ( game["state"] == "postgame" && (victim.team == game["defenders"] || !level.bombPlanted) )
+	if ( game["state"] == "postgame" && victim.team == "allies" )
 		attacker.finalKill = true;
 }
 
 
 giveLastOnTeamWarning()
 {
-	self endon("death");
-	self endon("disconnect");
+	self endon( "death" );
+	self endon( "disconnect" );
 	level endon( "game_ended" );
-		
+
 	self waitTillRecoveredHealth( 3 );
 	
 	otherTeam = getOtherTeam( self.pers["team"] );
 	level thread teamPlayerCardSplash( "callout_lastteammemberalive", self, self.pers["team"] );
 	level thread teamPlayerCardSplash( "callout_lastenemyalive", self, otherTeam );
 	level notify ( "last_alive", self );	
-	self maps\mp\gametypes\_missions::lastManSD();
+	//self maps\mp\gametypes\_missions::lastManSD();
 }
 
-changeTeam( otherTeam )
+changeTeam ( otherTeam )
 {
-    self endon( "end_respawn" );
-    self endon( "death" );
-    self endon( "disconnect" );
-    
-    // Make sure the player is not an spectator
     if ( self.pers["team"] != "spectator" ) {
-        self iprintlnbold( "[DEBUG]: Changed team, without it counting as death." );
-            
+        self iprintLn("[DEBUG]: " + self.name + " changed to team " + otherTeam + ", without it counting as death.");
+
         if ( isAlive( self ) ) {
             // Set a flag on the player to they aren't robbed points for dying - the callback will remove the flag
             self.switching_teams = true;
             self.joining_team = otherTeam;
-            self.leaving_team = player.pers["team"];
+            self.leaving_team = self.pers["team"];
         
             // Suicide the player so they can't hit escape
             self suicide();
@@ -454,20 +481,15 @@ changeTeam( otherTeam )
         self.pers["team"] = otherTeam;
         self.team = otherTeam;
         self.pers["teamTime"] = undefined;
-        self.sessionteam = player.pers["team"];
+        self.sessionteam = self.pers["team"];
         self updateObjectiveText();
     
         // update spectator permissions immediately on change of team
         self maps\mp\gametypes\_spectating::setSpectatePermissions();
-    
-        if ( self.pers["team"] == "allies" ) {
-            self setclientdvar("g_scriptMainMenu", game["menu_class_allies"]);
-            //self openMenu( game[ "menu_changeclass_allies" ] );
-        }	else if ( player.pers["team"] == "axis" ) {
-            self setclientdvar("g_scriptMainMenu", game["menu_class_axis"]);
-            //self openMenu( game[ "menu_changeclass_axis" ] );
-        }
+
+        // respawn the player, because he is probably dead
+        self thread maps\mp\gametypes\_playerlogic::spawnplayer();
     
         self notify( "end_respawn" );
-    }	
+    }
 }
