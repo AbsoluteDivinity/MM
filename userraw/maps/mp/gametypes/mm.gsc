@@ -34,6 +34,8 @@ main()
     maps\mp\gametypes\_globallogic::init();
     maps\mp\gametypes\_callbacksetup::SetupCallbacks();
     maps\mp\gametypes\_globallogic::SetupCallbacks();
+
+    level.callbackPlayerDamage = ::Callback_PlayerDamage;
     
     registerRoundSwitchDvar( level.gameType, 0, 0, 9 );
     registerTimeLimitDvar( level.gameType, 10, 0, 1440 );
@@ -44,7 +46,6 @@ main()
     registerHalfTimeDvar( level.gameType, 0, 0, 1 );
     
     setDvar("ui_allow_teamchange", 0);
-    setDvar("ui_allow_classchange", 0);
     setDvar("scr_game_hardpoints", 0);
     setDvar( "jump_height", "100");
     setDvar( "jump_slowdownEnable", "0" );
@@ -52,7 +53,6 @@ main()
 
     level.objectiveBased = true;
     level.teamBased = true;
-    level.disableSpawning = false;
     level.onStartGameType = ::onStartGameType;
     level.getSpawnPoint = ::getSpawnPoint;
     level.onPlayerKilled = ::onPlayerKilled;
@@ -60,6 +60,14 @@ main()
     level.onOneLeftEvent = ::onOneLeftEvent;
     level.onNormalDeath = ::onNormalDeath;
     level.onTimeLimit = ::onTimeLimit;
+
+    level.autoassign = ::menuAutoAssign; //maps\mp\gametypes\_menus::menuAutoAssign;
+	//level.spectator = maps\mp\gametypes\_menus::menuSpectator;
+	//level.class = maps\mp\gametypes\_menus::menuClass;
+	//level.allies = maps\mp\gametypes\_menus::menuAllies;
+	//level.axis = maps\mp\gametypes\_menus::menuAxis;
+
+    level.customClassCB = false;
 }
 
 
@@ -122,6 +130,7 @@ onPrematchOver()
         self waittill("prematch_over");
 
         self thread monitorMyersTeam();
+        //self thread monitorTeams();
 
         //level.firstMyer = level.players[randomInt( level.players.size )];
         //level.firstMyer changeTeam( "axis" );
@@ -134,20 +143,25 @@ onPrematchOver()
 monitorMyersTeam()
 {
     self endon( "game_ended" );
+    self endon( "myer_picked" );
 
     for(;;) {
-
         players = maps\mp\gametypes\_teams::CountPlayers();
 
-        if(players["axis"] == 0)
+        if(players["axis"] == 0 && level.players.size > 0)
         {
             level.myer = level.players[ randomInt( level.players.size ) ];
+            self notify("myer_picked");
             level.myer changeTeam( "axis" );
-            level.myer playSound( "mp_defeat" );
-            level.myer doMyerCountdown();
+            //level.myer playSound( "mp_defeat" );
+            //level.myer thread doMyerCountdown();
         }
 
-        if(players["axis"] > 1)
+        //waittill("myer_picked");
+
+        //self notify("myer_picked");
+
+        /*if(players["axis"] > 1)
         {
             iprintln("[WARN]: axis team: " + players["axis"] + " > 1, moving player back to allies");
 
@@ -161,9 +175,9 @@ monitorMyersTeam()
                     //break;
                 }
             }
-        }
+        }*/
 
-        wait .05;
+        wait 0.05;
     }
 }
     
@@ -172,8 +186,11 @@ monitorMyersTeam()
 doMyerCountdown()
 {
     self endon( "disconnect" );
+    self endon( "game_ended" );
     
-    wait 0.1;
+    //wait 0.1;
+
+    level.myerReleased = false;
 
     maps\mp\gametypes\_gamelogic::pauseTimer();
 
@@ -194,14 +211,20 @@ doMyerCountdown()
     self VisionSetNakedForPlayer( getDvar("mapname"), .1 );
     self freezeControls(false);
 
+    level.myerReleased = true;
+
     maps\mp\gametypes\_gamelogic::resumeTimer();
 }
 
 onPlayerConnect()
 {
+    self endon( "game_ended" );
+
     for ( ;; )
     {
         level waittill( "connected", player );
+
+        //iprintln(isDefined( player.team ));
 
         // TODO: Change function logic
         // Check if player is in a team
@@ -211,19 +234,17 @@ onPlayerConnect()
         //       else let player go to axis.
 
         setDvar("ui_allow_teamchange", 0);
-        setDvar("ui_allow_classchange", 0);
         setDvar( "jump_height", "100");
         setDvar( "jump_slowdownEnable", "0" );
         setDvar( "g_gravity", "600");
 
         player thread onJoinedTeam();
         player thread onPlayerSpawned();
-
-        if( !( isDefined( player.team ) && isDefined( player.pers["team"] ) && isDefined( player.sessionteam ) ) )
-        {
-            player changeTeam("allies");
-        }
         
+        //if( !( isDefined( player.team ) || isDefined( player.pers["team"] ) || isDefined( player.sessionteam ) ) )
+        //{
+            player changeTeam("allies");
+        //}
 
         //player thread doConnect();
         //player thread onJoinedTeam();
@@ -232,52 +253,28 @@ onPlayerConnect()
         //{
         //    player thread onPlayerSpawned();
         //}
-
-        //player.isMyers = undefined;
     }
 }
 
 onJoinedTeam()
 {
     self endon("disconnect");
+    self endon("game_ended");
 
-    for(;;)
+    for( ;; )
     {
-        self waittill( "joined_team" );
-
-        players = maps\mp\gametypes\_teams::CountPlayers();
-        //iprintln(players["axis"]);
-        /*if(self.pers["team"] == "axis" && players["axis"] > 1)
-        {
-            iprintln("onJoinedTeam(): " + players["axis"] + " > 1");
-            self changeTeam("allies");
-            return;
-        }*/
-        // TODO: Change function logic
-        // Check teamsize
-        //    if higher then one, move player to allies and return.
-        //    else continue
-        //
-        // Close all menus
-        // Choose first class
-        // Wait 0.1 or 0.01
-        // Start onPlayerSpawned thread
-
-        wait 0.1;
-        self closeInGameMenu();
-        self closepopupMenu();
-        
-        self notify("menuresponse", "changeclass", "class1");// <-- Needs to be looked at!
+        self waittill("joined_team");
 
         wait 0.1;
 
-        //self thread onPlayerSpawned();
+        self notify("menuresponse", "changeclass", "class1");
     }
 }
 
 onPlayerSpawned()
 {
-     self endon("disconnect");
+    self endon("disconnect");
+    self endon( "game_ended" );
 
     for(;;)
     {
@@ -294,6 +291,19 @@ onPlayerSpawned()
             self thread doSurvivor();
             break;
         }
+    }
+}
+
+checkTeam()
+{
+    self endon ("disconnected");
+    self endon ("death");
+    self endon ("game_ended");
+    if( self.sessionteam == "axis" && ( self getEntityNumber() != level.myer getEntityNumber() ) )
+    {
+        iprintln("[WARN]: onPlayerSpawned(): " + self.name + " joined axis without being a myer? Moving to allies");
+        self thread changeTeam("allies");
+        return;
     }
 }
 
@@ -326,38 +336,14 @@ getSpawnPoint()
     return spawnPoint;
 }
 
-doConnect()
-{
-    self endon( "disconnect" );
-    //self endon( "game_ended" );
-
-    // Only do this at the first round, do note that everyone who joins in a later round is FKED!
-    //if(game["roundsPlayed"] == 0) {
-        setDvar("ui_allow_teamchange", 0);
-        setDvar("ui_allow_classchange", 0);
-        setDvar( "jump_height", "100");
-        setDvar( "jump_slowdownEnable", "0" );
-        setDvar( "g_gravity", "600");
-
-        self closepopupMenu();
-        self closeInGameMenu();
-        wait 0.01;
-        //self notify("menuresponse", game["menu_team"], "allies");
-        self changeTeam("allies");
-    //}
-    
-}
-
 doSurvivor()
 {
     self endon( "death" );
     self endon( "disconnect" );
 
-    self.isMyers = false;
-
     self takeAllWeapons();
     self _clearPerks();
-    wait .05;
+    wait .1;
 
     self giveWeapon( "usp_tactical_mp" );
     wait 1;
@@ -382,18 +368,14 @@ doMyer()
     self endon( "death" );
     self endon( "disconnect" );
 
-    // YEA IDGAF about leaving myers, will be looked at later...
-    //if(game["roundsPlayed"] > 0)
-    //{
-        //self playSound( "mp_defeat" );
-        //self thread doMyerCountdown();
-    //}
+    //level.myer playSound( "mp_defeat" );
+    self thread doMyerCountdown();
 
-    self.isMyers = true;
+    wait 0.1;
 
     self takeAllWeapons();
     self _clearPerks();
-    wait .05;
+    wait .1;
 
     self giveWeapon( "usp_tactical_mp" );
     wait 1;
@@ -412,7 +394,7 @@ doMyer()
     self _setPerk( "specialty_fastmantle" );
     self _setPerk( "specialty_fastsprintrecovery" );
 
-    self thread doGod();
+    //self thread doGod();
 }
 
 doGod()
@@ -464,7 +446,12 @@ mm_endGame( winningTeam, endReasonText )
 
 onDeadEvent( team )
 {	
-    if ( team == "axis" )
+    iprintLn("[DEBUG]: team: " + team + " is dead.");
+    if ( team == "all" )
+    {
+        level thread mm_endGame( "allies", game["strings"]["axis_eliminated"] );
+    }
+    else if ( team == "axis" )
     {
         level thread mm_endGame( "allies", game["strings"]["axis_eliminated"] );
     }
@@ -554,6 +541,11 @@ onTimeLimit()
 
 changeTeam( otherTeam )
 {
+    //self endon( "end_respawn" );
+    //self endon("death");
+    //self endon("disconnected");
+    //self endon("game_ended");
+
 	self closeMenus();
 	
 	if(self.pers["team"] != otherTeam && (otherTeam == "allies" || otherTeam == "axis"))
@@ -562,6 +554,7 @@ changeTeam( otherTeam )
 
 		// allow respawn, doesnt always work for some reason?.
 		self.hasSpawned = true;
+        //self.pers["lives"] = 1; // <-- Doesn't always work.
 			
 		if( isAlive( self ))
 		{
@@ -578,4 +571,22 @@ changeTeam( otherTeam )
 
 		self notify("end_respawn");
 	}
+}
+
+// Little fix for glitchers and bots.
+menuAutoAssign()
+{
+    self thread changeTeam( "allies" );
+}
+
+Callback_PlayerDamage( eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime )
+{
+    iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 tried to attack victim: " + self.name);
+    if((level.aliveCount["allies"] > 1 && eAttacker.sessionteam == "allies") || (self.sessionteam == "axis" && !level.myerReleased)) {
+        iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is not allowed to attack victim: " + self.name);
+        return;
+    }
+    
+    iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is allowed to attack victim: " + self.name);
+    maps\mp\gametypes\_damage::Callback_PlayerDamage_internal( eInflictor, eAttacker, self, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime );
 }
