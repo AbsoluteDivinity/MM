@@ -52,6 +52,7 @@ main()
 
     level.objectiveBased = true;
     level.teamBased = true;
+    level.disableSpawning = false;
     level.onStartGameType = ::onStartGameType;
     level.getSpawnPoint = ::getSpawnPoint;
     level.onPlayerKilled = ::onPlayerKilled;
@@ -120,13 +121,52 @@ onPrematchOver()
     {
         self waittill("prematch_over");
 
-        level.firstMyer = level.players[randomInt( level.players.size )];
-        level.firstMyer changeTeam( "axis" );
+        self thread monitorMyersTeam();
+
+        //level.firstMyer = level.players[randomInt( level.players.size )];
+        //level.firstMyer changeTeam( "axis" );
         //level.firstMyer playSound( "mp_defeat" );
         //level.firstMyer thread doMyerCountdown();
     }
 }
 
+
+monitorMyersTeam()
+{
+    self endon( "game_ended" );
+
+    for(;;) {
+
+        players = maps\mp\gametypes\_teams::CountPlayers();
+
+        if(players["axis"] == 0)
+        {
+            level.myer = level.players[ randomInt( level.players.size ) ];
+            level.myer changeTeam( "axis" );
+            level.myer playSound( "mp_defeat" );
+            level.myer doMyerCountdown();
+        }
+
+        if(players["axis"] > 1)
+        {
+            iprintln("[WARN]: axis team: " + players["axis"] + " > 1, moving player back to allies");
+
+            // Change all non myer players back to allies.
+            for ( index = 0; index < level.players.size; index++ ) {
+                player = level.players[index];
+                
+                // Check if this the player we are looking for
+                if ( player getEntityNumber() != level.myer getEntityNumber() ) {
+                    player changeTeam("allies");
+                    //break;
+                }
+            }
+        }
+
+        wait .05;
+    }
+}
+    
 
 // NOTE: Make variable wait time.
 doMyerCountdown()
@@ -170,18 +210,18 @@ onPlayerConnect()
         //       if it has one player, let the player go to allies.
         //       else let player go to axis.
 
-        if( isDefined( self.team ) && isDefined( self.pers["team"] ) && isDefined( self.sessionteam ) )
+        setDvar("ui_allow_teamchange", 0);
+        setDvar("ui_allow_classchange", 0);
+        setDvar( "jump_height", "100");
+        setDvar( "jump_slowdownEnable", "0" );
+        setDvar( "g_gravity", "600");
+
+        player thread onJoinedTeam();
+        player thread onPlayerSpawned();
+
+        if( !( isDefined( player.team ) && isDefined( player.pers["team"] ) && isDefined( player.sessionteam ) ) )
         {
-            player thread onPlayerSpawned();
-        }
-        else
-        {
-            player thread onJoinedTeam();
-            if(level.teamCount["axis"] > 0) {
-                player changeTeam("allies");
-            } else {
-                player changeTeam("axis");
-            }
+            player changeTeam("allies");
         }
         
 
@@ -205,11 +245,14 @@ onJoinedTeam()
     {
         self waittill( "joined_team" );
 
-        if(self.pers["team"] == "axis" && level.teamCount["axis"] > 1)
+        players = maps\mp\gametypes\_teams::CountPlayers();
+        //iprintln(players["axis"]);
+        /*if(self.pers["team"] == "axis" && players["axis"] > 1)
         {
+            iprintln("onJoinedTeam(): " + players["axis"] + " > 1");
             self changeTeam("allies");
             return;
-        }
+        }*/
         // TODO: Change function logic
         // Check teamsize
         //    if higher then one, move player to allies and return.
@@ -228,7 +271,7 @@ onJoinedTeam()
 
         wait 0.1;
 
-        self thread onPlayerSpawned();
+        //self thread onPlayerSpawned();
     }
 }
 
@@ -240,7 +283,7 @@ onPlayerSpawned()
     {
         self waittill("spawned_player");
 
-        wait 0.01;
+        wait 0.1;
 
         switch(self.sessionteam)
         {
@@ -289,7 +332,7 @@ doConnect()
     //self endon( "game_ended" );
 
     // Only do this at the first round, do note that everyone who joins in a later round is FKED!
-    if(game["roundsPlayed"] == 0) {
+    //if(game["roundsPlayed"] == 0) {
         setDvar("ui_allow_teamchange", 0);
         setDvar("ui_allow_classchange", 0);
         setDvar( "jump_height", "100");
@@ -299,8 +342,9 @@ doConnect()
         self closepopupMenu();
         self closeInGameMenu();
         wait 0.01;
-        self notify("menuresponse", game["menu_team"], "allies");
-    }
+        //self notify("menuresponse", game["menu_team"], "allies");
+        self changeTeam("allies");
+    //}
     
 }
 
@@ -341,8 +385,8 @@ doMyer()
     // YEA IDGAF about leaving myers, will be looked at later...
     //if(game["roundsPlayed"] > 0)
     //{
-        self playSound( "mp_defeat" );
-        self thread doMyerCountdown();
+        //self playSound( "mp_defeat" );
+        //self thread doMyerCountdown();
     //}
 
     self.isMyers = true;
@@ -472,14 +516,14 @@ giveLastOnTeamWarning()
 
 onTimeLimit()
 {
-	mm_endGame( "allies", game["strings"]["time_limit_reached"] );
+    mm_endGame( "allies", game["strings"]["time_limit_reached"] );
 }
 
 
-changeTeam ( otherTeam )
+/*changeTeam ( otherTeam )
 {
     if ( self.pers["team"] != "spectator" ) {
-        self iprintLn("[DEBUG]: " + self.name + " changed to team " + otherTeam + ", without it counting as death.");
+        iprintLn("[DEBUG]: " + self.name + " changed to team " + otherTeam + ", without it counting as death.");
 
         if ( isAlive( self ) ) {
             // Set a flag on the player to they aren't robbed points for dying - the callback will remove the flag
@@ -505,4 +549,33 @@ changeTeam ( otherTeam )
     
         self notify( "end_respawn" );
     }
+}*/
+
+
+changeTeam( otherTeam )
+{
+	self closeMenus();
+	
+	if(self.pers["team"] != otherTeam && (otherTeam == "allies" || otherTeam == "axis"))
+	{
+        iprintLn("[DEBUG]: " + self.name + " changed to team " + otherTeam + ", without it counting as death.");
+
+		// allow respawn, doesnt always work for some reason?.
+		self.hasSpawned = true;
+			
+		if( isAlive( self ))
+		{
+			self.switching_teams = true;
+			self.joining_team = otherTeam;
+			self.leaving_team = self.pers["team"];
+
+			self suicide();
+		}
+
+		self maps\mp\gametypes\_menus::addToTeam( otherTeam );
+		//self.pers["class"] = undefined;
+		//self.class = undefined;
+
+		self notify("end_respawn");
+	}
 }
