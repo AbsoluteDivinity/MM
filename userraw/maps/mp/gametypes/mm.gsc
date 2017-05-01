@@ -58,6 +58,7 @@ main()
     level.onDeadEvent = ::onDeadEvent;
     level.onOneLeftEvent = ::onOneLeftEvent;
     level.onNormalDeath = ::onNormalDeath;
+    level.onTimeLimit = ::onTimeLimit;
 }
 
 
@@ -467,6 +468,13 @@ giveLastOnTeamWarning()
     level notify ( "last_alive", self );	
     //self maps\mp\gametypes\_missions::lastManSD();
 }
+
+
+onTimeLimit()
+{
+	mm_endGame( "allies", game["strings"]["time_limit_reached"] );
+}
+
 
 changeTeam ( otherTeam )
 {
