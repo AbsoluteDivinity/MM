@@ -64,7 +64,7 @@ main()
 
 onStartGameType()
 {	
-    setClientNameMode( "manual_change" );
+    setClientNameMode( "auto_change" );
     
     setObjectiveText( "axis", &"OBJECTIVES_MM_MYERS" );
     setObjectiveText( "allies", &"OBJECTIVES_MM_SURVIVORS" );
