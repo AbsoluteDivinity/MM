@@ -41,7 +41,7 @@ main()
     registerTimeLimitDvar( level.gameType, 10, 0, 1440 );
     registerScoreLimitDvar( level.gameType, 1, 0, 500 );
     registerRoundLimitDvar( level.gameType, 0, 0, 12 );
-    registerWinLimitDvar( level.gameType, 4, 0, 12 );
+    registerWinLimitDvar( level.gameType, 2, 0, 12 );
     registerNumLivesDvar( level.gameType, 1, 0, 10 );
     registerHalfTimeDvar( level.gameType, 0, 0, 1 );
     
@@ -477,14 +477,16 @@ menuAutoAssign()
 
 Callback_PlayerDamage( eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime )
 {
-    iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 tried to attack victim: " + self.name);
-    if(level.aliveCount["allies"] > 1 && eAttacker.sessionteam == "allies") {
-        iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is not allowed to attack victim: " + self.name);
-        return;
+    if(eAttacker.team != self.team) {
+        iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 tried to attack victim: " + self.name);
+        if(level.aliveCount["allies"] > 1 && eAttacker.sessionteam == "allies") {
+            iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is not allowed to attack victim: " + self.name);
+            return;
+        }
+        
+        iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is allowed to attack victim: " + self.name);
+        maps\mp\gametypes\_damage::Callback_PlayerDamage_internal( eInflictor, eAttacker, self, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime );
     }
-    
-    iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is allowed to attack victim: " + self.name);
-    maps\mp\gametypes\_damage::Callback_PlayerDamage_internal( eInflictor, eAttacker, self, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime );
 }
 
 /***********************************
