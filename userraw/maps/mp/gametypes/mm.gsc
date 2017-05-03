@@ -38,7 +38,7 @@ main()
     level.callbackPlayerDamage = ::Callback_PlayerDamage;
     
     registerRoundSwitchDvar( level.gameType, 0, 0, 9 );
-    registerTimeLimitDvar( level.gameType, 10, 0, 1440 );
+    registerTimeLimitDvar( level.gameType, 5, 0, 1440 );
     registerScoreLimitDvar( level.gameType, 1, 0, 500 );
     registerRoundLimitDvar( level.gameType, 0, 0, 12 );
     registerWinLimitDvar( level.gameType, 2, 0, 12 );
