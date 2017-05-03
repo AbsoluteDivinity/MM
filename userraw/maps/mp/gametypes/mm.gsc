@@ -50,6 +50,7 @@ main()
     setDvar( "jump_height", "100");
     setDvar( "jump_slowdownEnable", "0" );
     setDvar( "g_gravity", "600");
+    setDvar( "g_hardcore", 1 );
 
     level.objectiveBased = true;
     level.teamBased = true;
@@ -115,6 +116,9 @@ onStartGameType()
     level thread onPrematchOver();
     level thread onPlayerConnect();
 
+    // Temp part
+    maps\mp\gametypes\_mmhud::infoHUD();
+
     // The amount of time to wait for people to spawn.
     setDvarIfUninitialized( "scr_mm_time", 30 );
 }
@@ -175,7 +179,7 @@ onPlayerConnect()
         //setDvar( "jump_slowdownEnable", "0" );
         //setDvar( "g_gravity", "600");
 
-        player thread onJoinedTeam();
+        //player thread onJoinedTeam();
         player thread onPlayerSpawned();
         
         if(player.team != "allies")
@@ -194,7 +198,7 @@ onJoinedTeam()
 
         wait 0.1;
 
-        self notify("menuresponse", "changeclass", "class1");
+        //self notify("menuresponse", "changeclass", "class1");
     }
 }
 
@@ -255,14 +259,12 @@ doSurvivor()
     self endon( "death" );
     self endon( "disconnect" );
 
-    wait 0.1;
-
     self takeAllWeapons();
     self _clearPerks();
     wait .1;
 
     self giveWeapon( "usp_tactical_mp" );
-    wait 1;
+    wait .1;
     self setWeaponAmmoClip( "usp_tactical_mp", 0 );
     self setWeaponAmmoStock( "usp_tactical_mp", 0 );
     self switchToWeapon( "usp_tactical_mp" );
@@ -285,16 +287,14 @@ doMyer()
     self endon( "disconnect" );
 
     //level.myer playSound( "mp_defeat" );
-    self thread doMyerCountdown();
-
-    wait 0.1;
+    //self thread doMyerCountdown();
 
     self takeAllWeapons();
     self _clearPerks();
     wait .1;
 
     self giveWeapon( "usp_tactical_mp" );
-    wait 1;
+    wait .1;
     self setWeaponAmmoClip( "usp_tactical_mp", 0 );
     self setWeaponAmmoStock( "usp_tactical_mp", 0 );
     self switchToWeapon( "usp_tactical_mp" );
@@ -384,7 +384,7 @@ onNormalDeath( victim, attacker, lifeId )
     score = maps\mp\gametypes\_rank::getScoreInfoValue( "kill" );
     assert( isDefined( score ) );
     
-    if ( game["state"] == "postgame" && victim.team == "allies" )
+    if ( game["state"] == "postgame" )
         attacker.finalKill = true;
 }
 
@@ -400,7 +400,8 @@ giveLastOnTeamWarning()
     otherTeam = getOtherTeam( self.pers["team"] );
     level thread teamPlayerCardSplash( "callout_lastteammemberalive", self, self.pers["team"] );
     level thread teamPlayerCardSplash( "callout_lastenemyalive", self, otherTeam );
-    level notify ( "last_alive", self );	
+    //iPrintlnBold(self.name + "^7 is the last alive survivor, he is allowed to fight back!");
+    level notify ( "last_alive", self );
     //self maps\mp\gametypes\_missions::lastManSD();
 }
 
@@ -477,7 +478,7 @@ menuAutoAssign()
 Callback_PlayerDamage( eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime )
 {
     iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 tried to attack victim: " + self.name);
-    if((level.aliveCount["allies"] > 1 && eAttacker.sessionteam == "allies") || (self.sessionteam == "axis" && !level.myerReleased)) {
+    if(level.aliveCount["allies"] > 1 && eAttacker.sessionteam == "allies") {
         iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is not allowed to attack victim: " + self.name);
         return;
     }
@@ -522,4 +523,5 @@ doMyerTeam()
 {
     level.myer = level.players[ randomInt( level.players.size ) ];
     level.myer changeTeam( "axis" );
+    iPrintlnBold( "^9" + level.myer.name + "  ^1is Michael Myers!");
 }
