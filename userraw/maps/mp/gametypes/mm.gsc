@@ -61,12 +61,9 @@ main()
     level.onNormalDeath = ::onNormalDeath;
     level.onTimeLimit = ::onTimeLimit;
 
-    level.autoassign = ::menuAutoAssign; //maps\mp\gametypes\_menus::menuAutoAssign;
-	//level.spectator = maps\mp\gametypes\_menus::menuSpectator;
-	//level.class = maps\mp\gametypes\_menus::menuClass;
-	//level.allies = maps\mp\gametypes\_menus::menuAllies;
-	//level.axis = maps\mp\gametypes\_menus::menuAxis;
+    level.autoassign = ::menuAutoAssign;
 
+    // Disable class switching.
     level.customClassCB = false;
 }
 
@@ -125,74 +122,22 @@ onStartGameType()
 
 onPrematchOver()
 {
-    for( ;; )
-    {
-        self waittill("prematch_over");
-
-        self thread monitorMyersTeam();
-        //self thread monitorTeams();
-
-        //level.firstMyer = level.players[randomInt( level.players.size )];
-        //level.firstMyer changeTeam( "axis" );
-        //level.firstMyer playSound( "mp_defeat" );
-        //level.firstMyer thread doMyerCountdown();
-    }
+    self waittill( "prematch_done" );
+    self thread setupGame();
 }
-
-
-monitorMyersTeam()
-{
-    self endon( "game_ended" );
-    self endon( "myer_picked" );
-
-    for(;;) {
-        players = maps\mp\gametypes\_teams::CountPlayers();
-
-        if(players["axis"] == 0 && level.players.size > 0)
-        {
-            level.myer = level.players[ randomInt( level.players.size ) ];
-            self notify("myer_picked");
-            level.myer changeTeam( "axis" );
-            //level.myer playSound( "mp_defeat" );
-            //level.myer thread doMyerCountdown();
-        }
-
-        //waittill("myer_picked");
-
-        //self notify("myer_picked");
-
-        /*if(players["axis"] > 1)
-        {
-            iprintln("[WARN]: axis team: " + players["axis"] + " > 1, moving player back to allies");
-
-            // Change all non myer players back to allies.
-            for ( index = 0; index < level.players.size; index++ ) {
-                player = level.players[index];
-                
-                // Check if this the player we are looking for
-                if ( player getEntityNumber() != level.myer getEntityNumber() ) {
-                    player changeTeam("allies");
-                    //break;
-                }
-            }
-        }*/
-
-        wait 0.05;
-    }
-}
-    
 
 // NOTE: Make variable wait time.
 doMyerCountdown()
 {
     self endon( "disconnect" );
     self endon( "game_ended" );
+    self endon( "myer_released" );
     
     //wait 0.1;
 
     level.myerReleased = false;
 
-    maps\mp\gametypes\_gamelogic::pauseTimer();
+    //maps\mp\gametypes\_gamelogic::pauseTimer();
 
     // Freeze myer, so survivers have some time to run away.
     self freezeControls(true);
@@ -213,46 +158,28 @@ doMyerCountdown()
 
     level.myerReleased = true;
 
-    maps\mp\gametypes\_gamelogic::resumeTimer();
+    self notify("myer_released");
+    //maps\mp\gametypes\_gamelogic::resumeTimer();
 }
 
 onPlayerConnect()
 {
-    self endon( "game_ended" );
+    //self endon( "game_ended" );
 
     for ( ;; )
     {
         level waittill( "connected", player );
 
-        //iprintln(isDefined( player.team ));
-
-        // TODO: Change function logic
-        // Check if player is in a team
-        //    if player is in a team already, continue to onPlayerSpawned() thread
-        //    else check axis team and start onJoinedTeam() thread
-        //       if it has one player, let the player go to allies.
-        //       else let player go to axis.
-
         setDvar("ui_allow_teamchange", 0);
-        setDvar( "jump_height", "100");
-        setDvar( "jump_slowdownEnable", "0" );
-        setDvar( "g_gravity", "600");
+        //setDvar( "jump_height", "100");
+        //setDvar( "jump_slowdownEnable", "0" );
+        //setDvar( "g_gravity", "600");
 
         player thread onJoinedTeam();
         player thread onPlayerSpawned();
         
-        //if( !( isDefined( player.team ) || isDefined( player.pers["team"] ) || isDefined( player.sessionteam ) ) )
-        //{
+        if(player.team != "allies")
             player changeTeam("allies");
-        //}
-
-        //player thread doConnect();
-        //player thread onJoinedTeam();
-
-        //if(game["roundsPlayed"] > 0 ) // should actually just check the team but what ever...
-        //{
-        //    player thread onPlayerSpawned();
-        //}
     }
 }
 
@@ -280,7 +207,7 @@ onPlayerSpawned()
     {
         self waittill("spawned_player");
 
-        wait 0.1;
+        //wait 0.1;
 
         switch(self.sessionteam)
         {
@@ -291,19 +218,6 @@ onPlayerSpawned()
             self thread doSurvivor();
             break;
         }
-    }
-}
-
-checkTeam()
-{
-    self endon ("disconnected");
-    self endon ("death");
-    self endon ("game_ended");
-    if( self.sessionteam == "axis" && ( self getEntityNumber() != level.myer getEntityNumber() ) )
-    {
-        iprintln("[WARN]: onPlayerSpawned(): " + self.name + " joined axis without being a myer? Moving to allies");
-        self thread changeTeam("allies");
-        return;
     }
 }
 
@@ -340,6 +254,8 @@ doSurvivor()
 {
     self endon( "death" );
     self endon( "disconnect" );
+
+    wait 0.1;
 
     self takeAllWeapons();
     self _clearPerks();
@@ -397,20 +313,6 @@ doMyer()
     //self thread doGod();
 }
 
-doGod()
-{
-    self endon("disconnect");
-    self endon("death");
-    self.maxhealth = 90000;
-    self.health = self.maxhealth;
-    while( 1 )
-    {
-        if(self.health < self.maxhealth)
-        self.health = self.maxhealth;
-        wait 0.1;
-    }
-}
-
 
 onPlayerKilled(eInflictor, attacker, iDamage, sMeansOfDeath, sWeapon, vDir, sHitLoc, psOffsetTime, deathAnimDuration, killId)
 {
@@ -445,18 +347,22 @@ mm_endGame( winningTeam, endReasonText )
 
 
 onDeadEvent( team )
-{	
-    iprintLn("[DEBUG]: team: " + team + " is dead.");
+{
+    iPrintln(team);
+
     if ( team == "all" )
     {
+        // Survivors always win for now.
         level thread mm_endGame( "allies", game["strings"]["axis_eliminated"] );
     }
     else if ( team == "axis" )
     {
+        // Myers are dead, so survivors have won!
         level thread mm_endGame( "allies", game["strings"]["axis_eliminated"] );
     }
     else if ( team == "allies" )
     {
+        // Survivors are dead, so the myers have won, FK!
         level thread mm_endGame( "axis", game["strings"]["allies_eliminated"] );
     }
 }
@@ -477,8 +383,6 @@ onNormalDeath( victim, attacker, lifeId )
 {
     score = maps\mp\gametypes\_rank::getScoreInfoValue( "kill" );
     assert( isDefined( score ) );
-
-    team = victim.team;
     
     if ( game["state"] == "postgame" && victim.team == "allies" )
         attacker.finalKill = true;
@@ -541,20 +445,11 @@ onTimeLimit()
 
 changeTeam( otherTeam )
 {
-    //self endon( "end_respawn" );
-    //self endon("death");
-    //self endon("disconnected");
-    //self endon("game_ended");
-
 	self closeMenus();
 	
 	if(self.pers["team"] != otherTeam && (otherTeam == "allies" || otherTeam == "axis"))
 	{
         iprintLn("[DEBUG]: " + self.name + " changed to team " + otherTeam + ", without it counting as death.");
-
-		// allow respawn, doesnt always work for some reason?.
-		self.hasSpawned = true;
-        //self.pers["lives"] = 1; // <-- Doesn't always work.
 			
 		if( isAlive( self ))
 		{
@@ -576,7 +471,7 @@ changeTeam( otherTeam )
 // Little fix for glitchers and bots.
 menuAutoAssign()
 {
-    self thread changeTeam( "allies" );
+    //self thread changeTeam( "allies" );
 }
 
 Callback_PlayerDamage( eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime )
@@ -589,4 +484,42 @@ Callback_PlayerDamage( eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, s
     
     iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is allowed to attack victim: " + self.name);
     maps\mp\gametypes\_damage::Callback_PlayerDamage_internal( eInflictor, eAttacker, self, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime );
+}
+
+/***********************************
+ * Everything here is for testing! *
+ ***********************************/
+
+setupGame()
+{
+    self endon( "game_ended" );
+    self thread doGameCountdown();
+    self waittill("countdown_done");
+    self thread doMyerTeam();
+}   
+
+doGameCountdown()
+{
+    level endon("countdown_done");
+    level.timer = getDvarInt("scr_mm_time");
+    for(;;)
+	{
+        iPrintln("[DEBUG]: Game will start in: " + level.timer);
+	    wait 1;
+		level.timer--;
+		if(level.timer <= 0)
+		{
+		    if(level.players.size > 1)
+		        level notify("countdown_done");		
+			else
+                iPrintln("[DEBUG]: player size: " + level.players.size + " is not enough to start the game, restart counter.");
+     		    level.timer = getDvarInt("scr_mm_time"); // Start timer again.
+		}
+	}
+}
+
+doMyerTeam()
+{
+    level.myer = level.players[ randomInt( level.players.size ) ];
+    level.myer changeTeam( "axis" );
 }
