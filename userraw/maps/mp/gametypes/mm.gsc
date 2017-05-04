@@ -38,7 +38,7 @@ main()
     level.callbackPlayerDamage = ::Callback_PlayerDamage;
     
     registerRoundSwitchDvar( level.gameType, 0, 0, 9 );
-    registerTimeLimitDvar( level.gameType, 5, 0, 1440 );
+    registerTimeLimitDvar( level.gameType, 10, 0, 1440 );
     registerScoreLimitDvar( level.gameType, 1, 0, 500 );
     registerRoundLimitDvar( level.gameType, 0, 0, 12 );
     registerWinLimitDvar( level.gameType, 2, 0, 12 );
@@ -348,7 +348,7 @@ mm_endGame( winningTeam, endReasonText )
 
 onDeadEvent( team )
 {
-    iPrintln(team);
+    debug(team + " team is dead.");
 
     if ( team == "all" )
     {
@@ -450,7 +450,7 @@ changeTeam( otherTeam )
 	
 	if(self.pers["team"] != otherTeam && (otherTeam == "allies" || otherTeam == "axis"))
 	{
-        iprintLn("[DEBUG]: " + self.name + " changed to team " + otherTeam + ", without it counting as death.");
+        debug(self.name + "^7 changed to team " + otherTeam + ", without it counting as death.");
 			
 		if( isAlive( self ))
 		{
@@ -478,13 +478,13 @@ menuAutoAssign()
 Callback_PlayerDamage( eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime )
 {
     if(eAttacker.team != self.team) {
-        iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 tried to attack victim: " + self.name);
+        debug("eAttacker: " + eAttacker.name + "^7 tried to attack victim: " + self.name);
         if(level.aliveCount["allies"] > 1 && eAttacker.sessionteam == "allies") {
-            iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is not allowed to attack victim: " + self.name);
+            debug("eAttacker: " + eAttacker.name + "^7 is not allowed to attack victim: " + self.name);
             return;
         }
         
-        iprintln("[DEBUG]: eAttacker: " + eAttacker.name + "^7 is allowed to attack victim: " + self.name);
+        debug("eAttacker: " + eAttacker.name + "^7 is allowed to attack victim: " + self.name);
         maps\mp\gametypes\_damage::Callback_PlayerDamage_internal( eInflictor, eAttacker, self, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime );
     }
 }
@@ -507,7 +507,7 @@ doGameCountdown()
     level.timer = getDvarInt("scr_mm_time");
     for(;;)
 	{
-        iPrintln("[DEBUG]: Game will start in: " + level.timer);
+        debug("Game will start in: " + level.timer);
 	    wait 1;
 		level.timer--;
 		if(level.timer <= 0)
@@ -515,7 +515,7 @@ doGameCountdown()
 		    if(level.players.size > 1)
 		        level notify("countdown_done");		
 			else
-                iPrintln("[DEBUG]: player size: " + level.players.size + " is not enough to start the game, restart counter.");
+                debug("player size: " + level.players.size + " is not enough to start the game, restart counter.");
      		    level.timer = getDvarInt("scr_mm_time"); // Start timer again.
 		}
 	}
@@ -526,4 +526,11 @@ doMyerTeam()
     level.myer = level.players[ randomInt( level.players.size ) ];
     level.myer changeTeam( "axis" );
     iPrintlnBold( "^9" + level.myer.name + "  ^1is Michael Myers!");
+}
+
+debug( message )
+{
+    /#
+    iPrintln( "[DEBUG]: " + message );
+    #/
 }
