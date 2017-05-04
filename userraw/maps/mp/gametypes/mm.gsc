@@ -45,12 +45,12 @@ main()
     registerNumLivesDvar( level.gameType, 1, 0, 10 );
     registerHalfTimeDvar( level.gameType, 0, 0, 1 );
     
-    setDvar("ui_allow_teamchange", 0);
-    setDvar("scr_game_hardpoints", 0);
-    setDvar( "jump_height", "100");
-    setDvar( "jump_slowdownEnable", "0" );
-    setDvar( "g_gravity", "600");
-    setDvar( "g_hardcore", 1 );
+    setDvar( "scr_game_hardpoints", 0 );
+    setDvar( "jump_height", 100 );
+    setDvar( "jump_slowdownEnable", 0 );
+    setDvar( "g_gravity", 600 );
+    setDvar( "g_deadChat", 1 ); // This should be either 0 or 1 idk xD
+    //setDvar( "g_hardcore", 1 );
 
     level.objectiveBased = true;
     level.teamBased = true;
@@ -62,7 +62,9 @@ main()
     level.onNormalDeath = ::onNormalDeath;
     level.onTimeLimit = ::onTimeLimit;
 
-    level.autoassign = ::menuAutoAssign;
+    level.autoassign = ::menuAllies;
+    level.allies = ::menuAllies;
+    level.axis = ::menuAllies; // Yea thats right, no switching to axis...
 
     // Disable class switching.
     level.customClassCB = false;
@@ -168,37 +170,10 @@ doMyerCountdown()
 
 onPlayerConnect()
 {
-    //self endon( "game_ended" );
-
     for ( ;; )
     {
         level waittill( "connected", player );
-
-        setDvar("ui_allow_teamchange", 0);
-        //setDvar( "jump_height", "100");
-        //setDvar( "jump_slowdownEnable", "0" );
-        //setDvar( "g_gravity", "600");
-
-        //player thread onJoinedTeam();
         player thread onPlayerSpawned();
-        
-        if(player.team != "allies")
-            player changeTeam("allies");
-    }
-}
-
-onJoinedTeam()
-{
-    self endon("disconnect");
-    self endon("game_ended");
-
-    for( ;; )
-    {
-        self waittill("joined_team");
-
-        wait 0.1;
-
-        //self notify("menuresponse", "changeclass", "class1");
     }
 }
 
@@ -210,8 +185,6 @@ onPlayerSpawned()
     for(;;)
     {
         self waittill("spawned_player");
-
-        //wait 0.1;
 
         switch(self.sessionteam)
         {
@@ -229,9 +202,6 @@ onPlayerSpawned()
 getSpawnPoint()
 {
     spawnteam = self.pers["team"];
-    if ( game["switchedsides"] )
-        spawnteam = getOtherTeam( spawnteam );
-
     if ( level.inGracePeriod )
     {
         if ( getDvar( "mapname" ) == "mp_shipment_long" )
@@ -270,15 +240,21 @@ doSurvivor()
     self switchToWeapon( "usp_tactical_mp" );
 
     //self _setPerk( "specialty_extendedmelee" );
-    self _setPerk( "specialty_heartbreaker" );
-    self _setPerk( "specialty_coldblooded" );
-    self _setPerk( "specialty_marathon" );
-    self _setPerk( "specialty_lightweight" );
-    self _setPerk( "specialty_falldamage" );
-    self _setPerk( "specialty_quieter" );
-    self _setPerk( "specialty_gpsjammer" );
-    self _setPerk( "specialty_fastmantle" );
-    self _setPerk( "specialty_fastsprintrecovery" );
+    //self _setPerk( "specialty_heartbreaker" );
+    //self _setPerk( "specialty_coldblooded" );
+    //self _setPerk( "specialty_marathon" );
+    //self _setPerk( "specialty_lightweight" );
+    //self _setPerk( "specialty_falldamage" );
+    //self _setPerk( "specialty_quieter" );
+    //self _setPerk( "specialty_gpsjammer" );
+    //self _setPerk( "specialty_fastmantle" );
+    //self _setPerk( "specialty_fastsprintrecovery" );
+
+    self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
+	self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
+	self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
+	self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
+	self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
 }
 
 doMyer()
@@ -300,15 +276,21 @@ doMyer()
     self switchToWeapon( "usp_tactical_mp" );
 
     //self _setPerk( "specialty_extendedmelee" );
-    self _setPerk( "specialty_heartbreaker" );
-    self _setPerk( "specialty_coldblooded" );
-    self _setPerk( "specialty_marathon" );
-    self _setPerk( "specialty_lightweight" );
-    self _setPerk( "specialty_falldamage" );
-    self _setPerk( "specialty_quieter" );
-    self _setPerk( "specialty_gpsjammer" );
-    self _setPerk( "specialty_fastmantle" );
-    self _setPerk( "specialty_fastsprintrecovery" );
+    //self _setPerk( "specialty_heartbreaker" );
+    //self _setPerk( "specialty_coldblooded" );
+    //self _setPerk( "specialty_marathon" );
+    //self _setPerk( "specialty_lightweight" );
+    //self _setPerk( "specialty_falldamage" );
+    //self _setPerk( "specialty_quieter" );
+    //self _setPerk( "specialty_gpsjammer" );
+    //self _setPerk( "specialty_fastmantle" );
+    //self _setPerk( "specialty_fastsprintrecovery" );
+
+    self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
+	self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
+	self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
+	self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
+	self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
 
     //self thread doGod();
 }
@@ -462,17 +444,21 @@ changeTeam( otherTeam )
 		}
 
 		self maps\mp\gametypes\_menus::addToTeam( otherTeam );
-		//self.pers["class"] = undefined;
-		//self.class = undefined;
+
+		if ( game["state"] == "playing" && !isInKillcam() )
+			self thread maps\mp\gametypes\_playerlogic::spawnClient();
 
 		self notify("end_respawn");
 	}
 }
 
-// Little fix for glitchers and bots.
-menuAutoAssign()
+menuAllies()
 {
-    //self thread changeTeam( "allies" );
+    // Don't allow myers to teamswitch, thats not cool!
+    if( self.team != "axis" )
+        self changeTeam( "allies" );
+    else
+        self closeMenus();
 }
 
 Callback_PlayerDamage( eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime )
