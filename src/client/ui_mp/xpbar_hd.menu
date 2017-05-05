@@ -1,0 +1,10 @@
+{
+	menuDef
+	{
+		name "xpbar_hd"
+		rect 0 0 640 480 8 8
+		visible 1
+		forecolor 1 1 1 1
+		visible when ( 0 )
+	}
+}
