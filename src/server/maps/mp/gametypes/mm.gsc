@@ -174,6 +174,9 @@ onPlayerSpawned()
     {
         self waittill("spawned_player");
 
+        // Sometimes the game is not "started" yet, so lets update the gameevents ourself.
+        maps\mp\gametypes\_gamelogic::updateGameEvents();
+
         switch(self.sessionteam)
         {
             case "axis":
@@ -312,7 +315,7 @@ onDeadEvent( team )
 
 onOneLeftEvent( team )
 {
-    debug( "onOneLeftEvent -> team: " + team )
+    debug( "onOneLeftEvent -> team: " + team );
     // Only give a warning if there is one surivor left.
     //if( team == "allies" ) {
         lastSurvivor = getLastLivingPlayer( team );
