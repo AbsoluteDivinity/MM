@@ -50,6 +50,7 @@ main()
     setDvar( "jump_slowdownEnable", 0 );
     setDvar( "g_gravity", 600 );
     setDvar( "g_deadChat", 1 ); // This should be either 0 or 1 idk xD
+    setDvar( "aim_automelee_enabled", 0);
 
     level.objectiveBased = true;
     level.teamBased = true;
@@ -75,8 +76,9 @@ main()
 onPrecacheGameType()
 {
     // Le knive and freerunz, ty RezTech <3
-    precacheItem( "knife_mp" );
-	precacheItem( "freerunner_mp" );
+    PrecacheItem( "knife_mp" );
+    PrecacheItem( "knife_bloody_mp" );
+    PrecacheItem( "freerunner_mp" );
 
     // Not sure if this is needed but whatever
     precacheString( &"OBJECTIVES_MM_MYERS" );
@@ -139,7 +141,7 @@ onStartGameType()
     maps\mp\gametypes\_mmhud::infoHUD();
 
     // The amount of time to wait for people to spawn.
-    setDvarIfUninitialized( "scr_mm_time", 30 );
+    setDvarIfUninitialized( "scr_mm_time", 50 );
 }
 
 
@@ -247,15 +249,15 @@ doMyer()
     self _clearPerks();
     wait .05;
 
-    self giveWeapon( "knife_mp" );
+    self giveWeapon( "knife_bloody_mp" );
     wait .1;
-    self switchToWeapon( "knife_mp" );
+    self switchToWeapon( "knife_bloody_mp" );
 
     self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
-	self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
-	self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
-	self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
-	//self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
+    self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
+    self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
+    self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
+  //self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
 }
 
 
@@ -317,11 +319,11 @@ onOneLeftEvent( team )
 {
     debug( "onOneLeftEvent -> team: " + team );
     // Only give a warning if there is one surivor left.
-    //if( team == "allies" ) {
+    if( team == "allies" ) {
         lastSurvivor = getLastLivingPlayer( team );
 
         lastSurvivor thread giveLastOnTeamWarning();
-    //}
+    }
 }
 
 
@@ -350,9 +352,9 @@ giveLastOnTeamWarning()
     level notify ( "last_alive", self );
 
     self takeAllWeapons();
-	self giveWeapon( "knife_mp" );
-	wait .1;
-	self switchToWeapon( "knife_mp" );
+    self giveWeapon( "knife_mp" );
+    wait .1;
+    self switchToWeapon( "knife_mp" );
 
     //self maps\mp\gametypes\_missions::lastManSD();
 }
