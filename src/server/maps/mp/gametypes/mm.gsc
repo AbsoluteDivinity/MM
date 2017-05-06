@@ -50,10 +50,11 @@ main()
     setDvar( "jump_slowdownEnable", 0 );
     setDvar( "g_gravity", 600 );
     setDvar( "g_deadChat", 1 ); // This should be either 0 or 1 idk xD
-    //setDvar( "g_hardcore", 1 );
+    setDvar( "aim_automelee_enabled", 0);
 
     level.objectiveBased = true;
     level.teamBased = true;
+    level.onPrecacheGameType = ::onPrecacheGameType;
     level.onStartGameType = ::onStartGameType;
     level.getSpawnPoint = ::getSpawnPoint;
     level.onPlayerKilled = ::onPlayerKilled;
@@ -63,11 +64,29 @@ main()
     level.onTimeLimit = ::onTimeLimit;
 
     level.autoassign = ::menuAllies;
+    level.spectator = ::menuSpectator;
     level.allies = ::menuAllies;
     level.axis = ::menuAllies; // Yea thats right, no switching to axis...
 
     // Disable class switching.
     level.customClassCB = false;
+}
+
+
+onPrecacheGameType()
+{
+    // Le knive and freerunz, ty RezTech <3
+    PrecacheItem( "knife_mp" );
+    PrecacheItem( "knife_bloody_mp" );
+    PrecacheItem( "freerunner_mp" );
+
+    // Not sure if this is needed but whatever
+    precacheString( &"OBJECTIVES_MM_MYERS" );
+	precacheString( &"OBJECTIVES_MM_SURVIVORS" );
+	precacheString( &"OBJECTIVES_MM_MYERS_SCORE" );
+	precacheString( &"OBJECTIVES_MM_SURVIVORS_SCORE" );
+	precacheString( &"OBJECTIVES_MM_MYERS_HINT" );
+	precacheString( &"OBJECTIVES_MM_SURVIVORS_HINT" );
 }
 
 
@@ -122,50 +141,17 @@ onStartGameType()
     maps\mp\gametypes\_mmhud::infoHUD();
 
     // The amount of time to wait for people to spawn.
-    setDvarIfUninitialized( "scr_mm_time", 30 );
+    setDvarIfUninitialized( "scr_mm_time", 50 );
+    setDvarIfUninitialized( "scr_mm_explore" 0 ); // DEMN EXPLORE MODES
 }
 
 
 onPrematchOver()
 {
     self waittill( "prematch_done" );
-    self thread setupGame();
-}
 
-// NOTE: Make variable wait time.
-doMyerCountdown()
-{
-    self endon( "disconnect" );
-    self endon( "game_ended" );
-    self endon( "myer_released" );
-    
-    //wait 0.1;
-
-    level.myerReleased = false;
-
-    //maps\mp\gametypes\_gamelogic::pauseTimer();
-
-    // Freeze myer, so survivers have some time to run away.
-    self freezeControls(true);
-    self VisionSetNakedForPlayer( "black_bw", 1.5 );
-
-    // Start final countdown!
-    iPrintlnBold( "^9" + self.name + "  ^1is Michael Myers!");
-    wait 5;
-    iPrintlnBold( self.name + "  ^2Will be released in 15 seconds!" );
-    wait 5;
-    iPrintlnBold( self.name + "  ^3Will be released in 10 seconds!" );
-    wait 10;
-    iPrintlnBold( self.name + "  ^1Has been released!" );
-
-    // They got enough time to get away, RELEASE THE BAIT
-    self VisionSetNakedForPlayer( getDvar("mapname"), .1 );
-    self freezeControls(false);
-
-    level.myerReleased = true;
-
-    self notify("myer_released");
-    //maps\mp\gametypes\_gamelogic::resumeTimer();
+    if(!getDvarBool( "scr_mm_explore" ))
+        self thread setupGame(); // DEMN FOLKS NO WANNA DORA EXPLORE ;( THEY JUST WANT TO PLAY FFS!
 }
 
 onPlayerConnect()
@@ -174,6 +160,13 @@ onPlayerConnect()
     {
         level waittill( "connected", player );
         player thread onPlayerSpawned();
+
+        setDvar( "ui_allow_classchange", 0 );
+
+        if(player.team != "allies")
+        {
+            player changeTeam( "allies" );
+        }
     }
 }
 
@@ -185,6 +178,9 @@ onPlayerSpawned()
     for(;;)
     {
         self waittill("spawned_player");
+
+        // Sometimes the game is not "started" yet, so lets update the gameevents ourself.
+        maps\mp\gametypes\_gamelogic::updateGameEvents();
 
         switch(self.sessionteam)
         {
@@ -231,30 +227,17 @@ doSurvivor()
 
     self takeAllWeapons();
     self _clearPerks();
-    wait .1;
+    wait .05;
 
-    self giveWeapon( "usp_tactical_mp" );
+    self giveWeapon( "freerunner_mp" );
     wait .1;
-    self setWeaponAmmoClip( "usp_tactical_mp", 0 );
-    self setWeaponAmmoStock( "usp_tactical_mp", 0 );
-    self switchToWeapon( "usp_tactical_mp" );
-
-    //self _setPerk( "specialty_extendedmelee" );
-    //self _setPerk( "specialty_heartbreaker" );
-    //self _setPerk( "specialty_coldblooded" );
-    //self _setPerk( "specialty_marathon" );
-    //self _setPerk( "specialty_lightweight" );
-    //self _setPerk( "specialty_falldamage" );
-    //self _setPerk( "specialty_quieter" );
-    //self _setPerk( "specialty_gpsjammer" );
-    //self _setPerk( "specialty_fastmantle" );
-    //self _setPerk( "specialty_fastsprintrecovery" );
+    self switchToWeapon( "freerunner_mp" );
 
     self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
 	self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
 	self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
 	self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
-	self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
+	//self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
 }
 
 doMyer()
@@ -262,37 +245,22 @@ doMyer()
     self endon( "death" );
     self endon( "disconnect" );
 
-    //level.myer playSound( "mp_defeat" );
+    level.myer playSound( "mp_defeat" );
     //self thread doMyerCountdown();
 
     self takeAllWeapons();
     self _clearPerks();
-    wait .1;
+    wait .05;
 
-    self giveWeapon( "usp_tactical_mp" );
+    self giveWeapon( "knife_bloody_mp" );
     wait .1;
-    self setWeaponAmmoClip( "usp_tactical_mp", 0 );
-    self setWeaponAmmoStock( "usp_tactical_mp", 0 );
-    self switchToWeapon( "usp_tactical_mp" );
-
-    //self _setPerk( "specialty_extendedmelee" );
-    //self _setPerk( "specialty_heartbreaker" );
-    //self _setPerk( "specialty_coldblooded" );
-    //self _setPerk( "specialty_marathon" );
-    //self _setPerk( "specialty_lightweight" );
-    //self _setPerk( "specialty_falldamage" );
-    //self _setPerk( "specialty_quieter" );
-    //self _setPerk( "specialty_gpsjammer" );
-    //self _setPerk( "specialty_fastmantle" );
-    //self _setPerk( "specialty_fastsprintrecovery" );
+    self switchToWeapon( "knife_bloody_mp" );
 
     self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
-	self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
-	self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
-	self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
-	self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
-
-    //self thread doGod();
+    self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
+    self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
+    self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
+  //self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
 }
 
 
@@ -352,6 +320,7 @@ onDeadEvent( team )
 
 onOneLeftEvent( team )
 {
+    debug( "onOneLeftEvent -> team: " + team );
     // Only give a warning if there is one surivor left.
     if( team == "allies" ) {
         lastSurvivor = getLastLivingPlayer( team );
@@ -384,6 +353,12 @@ giveLastOnTeamWarning()
     level thread teamPlayerCardSplash( "callout_lastenemyalive", self, otherTeam );
     //iPrintlnBold(self.name + "^7 is the last alive survivor, he is allowed to fight back!");
     level notify ( "last_alive", self );
+
+    self takeAllWeapons();
+    self giveWeapon( "knife_mp" );
+    wait .1;
+    self switchToWeapon( "knife_mp" );
+
     //self maps\mp\gametypes\_missions::lastManSD();
 }
 
@@ -392,38 +367,6 @@ onTimeLimit()
 {
     mm_endGame( "allies", game["strings"]["time_limit_reached"] );
 }
-
-
-/*changeTeam ( otherTeam )
-{
-    if ( self.pers["team"] != "spectator" ) {
-        iprintLn("[DEBUG]: " + self.name + " changed to team " + otherTeam + ", without it counting as death.");
-
-        if ( isAlive( self ) ) {
-            // Set a flag on the player to they aren't robbed points for dying - the callback will remove the flag
-            self.switching_teams = true;
-            self.joining_team = otherTeam;
-            self.leaving_team = self.pers["team"];
-        
-            // Suicide the player so they can't hit escape
-            self suicide();
-        }
-        
-        self.pers["team"] = otherTeam;
-        self.team = otherTeam;
-        self.pers["teamTime"] = undefined;
-        self.sessionteam = self.pers["team"];
-        self updateObjectiveText();
-    
-        // update spectator permissions immediately on change of team
-        self maps\mp\gametypes\_spectating::setSpectatePermissions();
-
-        // respawn the player, because he is probably dead
-        self thread maps\mp\gametypes\_playerlogic::spawnplayer();
-    
-        self notify( "end_respawn" );
-    }
-}*/
 
 
 changeTeam( otherTeam )
@@ -445,8 +388,10 @@ changeTeam( otherTeam )
 
 		self maps\mp\gametypes\_menus::addToTeam( otherTeam );
 
-		if ( game["state"] == "playing" && !isInKillcam() )
-			self thread maps\mp\gametypes\_playerlogic::spawnClient();
+		// TODO: This part is needed to make it able to come back from spectator,
+        // but the player crashes once he connects. Find another way to let this work.
+		//if ( game["state"] == "playing" && !isInKillcam() )
+		//	self thread maps\mp\gametypes\_playerlogic::spawnClient();
 
 		self notify("end_respawn");
 	}
@@ -459,6 +404,12 @@ menuAllies()
         self changeTeam( "allies" );
     else
         self closeMenus();
+}
+
+menuSpectator()
+{
+    self closeMenus();
+    self iPrintlnBold("^3[WARN]^7: Spectator is currently disabled, this will be fixed later.");
 }
 
 Callback_PlayerDamage( eInflictor, eAttacker, iDamage, iDFlags, sMeansOfDeath, sWeapon, vPoint, vDir, sHitLoc, psOffsetTime )
@@ -485,15 +436,30 @@ setupGame()
     self thread doGameCountdown();
     self waittill("countdown_done");
     self thread doMyerTeam();
+    self thread doSurvivorsLeft();
+    self thread destroyEvent( "game_ended", level.counter ); // Wups it never comes to this spot xD.
 }   
 
 doGameCountdown()
 {
     level endon("countdown_done");
     level.timer = getDvarInt("scr_mm_time");
+
+    if(isDefined(level.counter))
+	    level.counter destroy();
+	level.counter = level createServerFontString("objective", 1.35);
+	level.counter setPoint("TOPLEFT", "TOPLEFT", 113, 4);
+	level.counter.HideWhenInMenu = true;
+	//level.counter.foreground = true;
+	//level.counter.glowalpha = 1;
+	//level.counter.glowcolor = (1,0,1);
+
+    //level thread destroyEvent( "game_ended", level.counter );
+
     for(;;)
 	{
         debug("Game will start in: " + level.timer);
+        level.counter setText("Game will starting in: " + level.timer);
 	    wait 1;
 		level.timer--;
 		if(level.timer <= 0)
@@ -501,10 +467,20 @@ doGameCountdown()
 		    if(level.players.size > 1)
 		        level notify("countdown_done");		
 			else
-                debug("player size: " + level.players.size + " is not enough to start the game, restart counter.");
+                warn("player size: " + level.players.size + " is not enough to start the game, restart counter.");
      		    level.timer = getDvarInt("scr_mm_time"); // Start timer again.
 		}
 	}
+}
+
+doSurvivorsLeft()
+{
+    self endon( "game_ended" );
+    for( ;; )
+    {
+        level.counter setText("Survivors left: " + level.aliveCount["allies"]);
+        wait 1;
+    }
 }
 
 doMyerTeam()
@@ -517,6 +493,19 @@ doMyerTeam()
 debug( message )
 {
     /#
-    iPrintln( "[DEBUG]: " + message );
+    iPrintln( "^5[DEBUG]^7: " + message );
     #/
+}
+
+warn( message )
+{
+    /#
+    iPrintln( "^3[WARN]^7: " + message );
+    #/
+}
+
+destroyEvent( e, event )
+{
+    self waittill( event );
+    e destroy();
 }
