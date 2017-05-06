@@ -142,7 +142,7 @@ onStartGameType()
 
     // The amount of time to wait for people to spawn.
     setDvarIfUninitialized( "scr_mm_time", 50 );
-    setDvarIfUninitialized( "scr_mm_explore" 0 ); // DEMN EXPLORE MODES
+    setDvarIfUninitialized( "scr_mm_explore", 0 ); // DEMN EXPLORE MODES
 }
 
 
@@ -150,7 +150,7 @@ onPrematchOver()
 {
     self waittill( "prematch_done" );
 
-    if(!getDvarBool( "scr_mm_explore" ))
+    if(getDvarInt( "scr_mm_explore" ) == 0)
         self thread setupGame(); // DEMN FOLKS NO WANNA DORA EXPLORE ;( THEY JUST WANT TO PLAY FFS!
 }
 
