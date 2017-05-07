@@ -28,9 +28,6 @@ Players spawn away from enemies and near their team at one of these positions.*/
 
 main()
 {
-    if(getdvar("mapname") == "mp_background")
-        return;
-    
     maps\mp\gametypes\_globallogic::init();
     maps\mp\gametypes\_callbacksetup::SetupCallbacks();
     maps\mp\gametypes\_globallogic::SetupCallbacks();
@@ -44,12 +41,17 @@ main()
     registerWinLimitDvar( level.gameType, 2, 0, 12 );
     registerNumLivesDvar( level.gameType, 1, 0, 10 );
     registerHalfTimeDvar( level.gameType, 0, 0, 1 );
+
+    PrecacheItem( "knife_mp" );
+    PrecacheItem( "knife_bloody_mp" );
+    PrecacheItem( "freerunner_mp" );
     
     setDvar( "scr_game_hardpoints", 0 );
     setDvar( "jump_height", 100 );
     setDvar( "jump_slowdownEnable", 0 );
     setDvar( "g_gravity", 600 );
     setDvar( "g_deadChat", 1 ); // This should be either 0 or 1 idk xD
+    setDvar( "aim_automelee_enabled", 0);
 
     level.objectiveBased = true;
     level.teamBased = true;
@@ -74,17 +76,18 @@ main()
 
 onPrecacheGameType()
 {
-    // Le knive and freerunz, ty RezTech <3
+    // Gametype specific weapons
     precacheItem( "knife_mp" );
-	precacheItem( "freerunner_mp" );
+    precacheItem( "knife_bloody_mp" );
+    precacheItem( "freerunner_mp" );
 
     // Not sure if this is needed but whatever
     precacheString( &"OBJECTIVES_MM_MYERS" );
-	precacheString( &"OBJECTIVES_MM_SURVIVORS" );
-	precacheString( &"OBJECTIVES_MM_MYERS_SCORE" );
-	precacheString( &"OBJECTIVES_MM_SURVIVORS_SCORE" );
-	precacheString( &"OBJECTIVES_MM_MYERS_HINT" );
-	precacheString( &"OBJECTIVES_MM_SURVIVORS_HINT" );
+    precacheString( &"OBJECTIVES_MM_SURVIVORS" );
+    precacheString( &"OBJECTIVES_MM_MYERS_SCORE" );
+    precacheString( &"OBJECTIVES_MM_SURVIVORS_SCORE" );
+    precacheString( &"OBJECTIVES_MM_MYERS_HINT" );
+    precacheString( &"OBJECTIVES_MM_SURVIVORS_HINT" );
 }
 
 
@@ -229,10 +232,10 @@ doSurvivor()
     self switchToWeapon( "freerunner_mp" );
 
     self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
-	self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
-	self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
-	self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
-	//self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
+    self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
+    self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
+    self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
+    //self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
 }
 
 doMyer()
@@ -247,15 +250,15 @@ doMyer()
     self _clearPerks();
     wait .05;
 
-    self giveWeapon( "knife_mp" );
+    self giveWeapon( "knife_bloody_mp" );
     wait .1;
-    self switchToWeapon( "knife_mp" );
+    self switchToWeapon( "knife_bloody_mp" );
 
     self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
-	self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
-	self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
-	self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
-	//self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
+    self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
+    self maps\mp\perks\_perks::givePerk( "specialty_lightweight" );
+    self maps\mp\perks\_perks::givePerk( "specialty_gpsjammer" );
+    //self maps\mp\perks\_perks::givePerk( "specialty_fastsprintrecovery" );
 }
 
 
@@ -350,9 +353,9 @@ giveLastOnTeamWarning()
     level notify ( "last_alive", self );
 
     self takeAllWeapons();
-	self giveWeapon( "knife_mp" );
-	wait .1;
-	self switchToWeapon( "knife_mp" );
+    self giveWeapon( "knife_mp" );
+    wait .1;
+    self switchToWeapon( "knife_mp" );
 
     //self maps\mp\gametypes\_missions::lastManSD();
 }
@@ -384,7 +387,7 @@ changeTeam( otherTeam )
 		self maps\mp\gametypes\_menus::addToTeam( otherTeam );
 
 		// TODO: This part is needed to make it able to come back from spectator,
-        // but the player crashes once he connects. Find another way to let this work.
+                // but the player crashes once he connects. Find another way to let this work.
 		//if ( game["state"] == "playing" && !isInKillcam() )
 		//	self thread maps\mp\gametypes\_playerlogic::spawnClient();
 
@@ -441,7 +444,7 @@ doGameCountdown()
     level.timer = getDvarInt("scr_mm_time");
 
     if(isDefined(level.counter))
-	    level.counter destroy();
+	level.counter destroy();
 	level.counter = level createServerFontString("objective", 1.35);
 	level.counter setPoint("TOPLEFT", "TOPLEFT", 113, 4);
 	level.counter.HideWhenInMenu = true;
