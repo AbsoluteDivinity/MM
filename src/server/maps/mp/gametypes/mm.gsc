@@ -143,13 +143,16 @@ onStartGameType()
 
     // The amount of time to wait for people to spawn.
     setDvarIfUninitialized( "scr_mm_time", 30 );
+    setDvarIfUninitialized( "scr_mm_explore", 0 );
 }
 
 
 onPrematchOver()
 {
     self waittill( "prematch_done" );
-    self thread setupGame();
+
+    if(getDvarInt( " scr_mm_explore" ) == 0)
+        self thread setupGame();
 }
 
 onPlayerConnect()
@@ -320,11 +323,11 @@ onOneLeftEvent( team )
 {
     debug( "onOneLeftEvent -> team: " + team );
     // Only give a warning if there is one surivor left.
-    //if( team == "allies" ) {
+    if( team == "allies" ) {
         lastSurvivor = getLastLivingPlayer( team );
 
         lastSurvivor thread giveLastOnTeamWarning();
-    //}
+    }
 }
 
 
