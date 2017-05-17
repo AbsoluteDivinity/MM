@@ -50,7 +50,8 @@ main()
     setDvar( "jump_height", 100 );
     setDvar( "jump_slowdownEnable", 0 );
     setDvar( "g_gravity", 600 );
-    setDvar( "g_deadChat", 1 ); // This should be either 0 or 1 idk xD
+    //setDvar( "g_deadChat", 0 ); // This should be either 0 or 1 idk xD
+    setDvar( "cg_deadChatWithTeam", 1 );
     setDvar( "aim_automelee_enabled", 0);
 
     level.objectiveBased = true;
@@ -151,8 +152,10 @@ onPrematchOver()
 {
     self waittill( "prematch_done" );
 
-    if(getDvarInt( " scr_mm_explore" ) == 0)
+    if(getDvarInt( "scr_mm_explore" ) == 0)
         self thread setupGame();
+    else
+        self thread setupExploreGame();
 }
 
 onPlayerConnect()
@@ -163,6 +166,8 @@ onPlayerConnect()
         player thread onPlayerSpawned();
 
         setDvar( "ui_allow_classchange", 0 );
+        player setClientDvar( "aim_automelee_enabled", 0);
+        player setClientDvar( "cg_deadChatWithTeam", 1 );
 
         if(player.team != "allies")
         {
@@ -230,9 +235,15 @@ doSurvivor()
     self _clearPerks();
     wait .05;
 
-    self giveWeapon( "freerunner_mp" );
-    wait .1;
-    self switchToWeapon( "freerunner_mp" );
+    if(getDvarInt( "scr_mm_explore" ) == 0) {
+        self giveWeapon( "freerunner_mp" );
+        wait .1;
+        self switchToWeapon( "freerunner_mp" );
+    } else {
+        self giveWeapon( "knife_bloody_mp" );
+        wait .1;
+        self switchToWeapon( "knife_bloody_mp" );
+    }
 
     self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
     self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
@@ -439,7 +450,21 @@ setupGame()
     self thread doMyerTeam();
     self thread doSurvivorsLeft();
     self thread destroyEvent( "game_ended", level.counter ); // Wups it never comes to this spot xD.
-}   
+}
+
+setupExploreGame()
+{
+    self endon( "game_ended" );
+
+    setDvar( "scr_mm_timelimit", 0 );
+
+    if(isDefined(level.counter))
+	    level.counter destroy();
+        
+	level.counter = level createServerFontString("objective", 1.35);
+	level.counter setPoint("TOPLEFT", "TOPLEFT", 113, 4);
+    level.counter setText("Explore Mode: ^2ON");
+}
 
 doGameCountdown()
 {
@@ -447,7 +472,8 @@ doGameCountdown()
     level.timer = getDvarInt("scr_mm_time");
 
     if(isDefined(level.counter))
-	level.counter destroy();
+	    level.counter destroy();
+
 	level.counter = level createServerFontString("objective", 1.35);
 	level.counter setPoint("TOPLEFT", "TOPLEFT", 113, 4);
 	level.counter.HideWhenInMenu = true;
