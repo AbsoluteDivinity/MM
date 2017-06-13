@@ -41,18 +41,13 @@ main()
     registerWinLimitDvar( level.gameType, 2, 0, 12 );
     registerNumLivesDvar( level.gameType, 1, 0, 10 );
     registerHalfTimeDvar( level.gameType, 0, 0, 1 );
-
-    PrecacheItem( "knife_mp" );
-    PrecacheItem( "knife_bloody_mp" );
-    PrecacheItem( "freerunner_mp" );
     
     setDvar( "scr_game_hardpoints", 0 );
     setDvar( "jump_height", 100 );
     setDvar( "jump_slowdownEnable", 0 );
     setDvar( "g_gravity", 600 );
-    //setDvar( "g_deadChat", 0 ); // This should be either 0 or 1 idk xD
-    setDvar( "cg_deadChatWithTeam", 1 );
-    setDvar( "aim_automelee_enabled", 0);
+
+    //setDvar( "aim_automelee_enabled", 0);
 
     level.objectiveBased = true;
     level.teamBased = true;
@@ -72,14 +67,21 @@ main()
 
     // Disable class switching.
     level.customClassCB = false;
+
+    // FIX BLOODY DEADCHAT!
+    wait 1;
+    setDvar( "g_deadchat", 1 );
+    setDvar( "cg_deadHearAllLiving", 1 );
+    setDvar( "cg_deadChatWithTeam", 1 );
 }
 
 
 onPrecacheGameType()
 {
     // Gametype specific weapons
-    precacheItem( "knife_mp" );
-    precacheItem( "knife_bloody_mp" );
+    //precacheItem( "knife_mp" );
+    //precacheItem( "knife_bloody_mp" );
+    precacheItem( "knife" );
     precacheItem( "freerunner_mp" );
 
     // Not sure if this is needed but whatever
@@ -138,6 +140,9 @@ onStartGameType()
 
     level thread onPrematchOver();
     level thread onPlayerConnect();
+
+    // Remove those stupid turrets
+    level deletePlacedEntity("misc_turret");
 
     // Temp part
     maps\mp\gametypes\_mmhud::infoHUD();
@@ -240,9 +245,9 @@ doSurvivor()
         wait .1;
         self switchToWeapon( "freerunner_mp" );
     } else {
-        self giveWeapon( "knife_bloody_mp" );
+        self giveWeapon( "knife" );
         wait .1;
-        self switchToWeapon( "knife_bloody_mp" );
+        self switchToWeapon( "knife" );
     }
 
     self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
@@ -264,9 +269,9 @@ doMyer()
     self _clearPerks();
     wait .05;
 
-    self giveWeapon( "knife_bloody_mp" );
+    self giveWeapon( "knife" );
     wait .1;
-    self switchToWeapon( "knife_bloody_mp" );
+    self switchToWeapon( "knife" );
 
     self maps\mp\perks\_perks::givePerk( "specialty_marathon" );
     self maps\mp\perks\_perks::givePerk( "specialty_falldamage" );
@@ -367,9 +372,9 @@ giveLastOnTeamWarning()
     level notify ( "last_alive", self );
 
     self takeAllWeapons();
-    self giveWeapon( "knife_mp" );
+    self giveWeapon( "knife" );
     wait .1;
-    self switchToWeapon( "knife_mp" );
+    self switchToWeapon( "knife" );
 
     //self maps\mp\gametypes\_missions::lastManSD();
 }
@@ -486,7 +491,7 @@ doGameCountdown()
     for(;;)
 	{
         debug("Game will start in: " + level.timer);
-        level.counter setText("Game will starting in: " + level.timer);
+        level.counter setText("Game will start in: " + level.timer);
 	    wait 1;
 		level.timer--;
 		if(level.timer <= 0)
